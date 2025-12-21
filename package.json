@@ -1,0 +1,97 @@
+{
+  "name": "melos-sidebar",
+  "displayName": "Melos Sidebar",
+  "description": "Melos Sidebar for VSCode",
+  "version": "0.0.1",
+  "publisher": "thai2902",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thai2902/melos-sidebar"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:melos.yaml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "melos-sidebar",
+          "title": "Melos",
+          "icon": "resources/melos-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "melos-sidebar": [
+        {
+          "id": "melos-scripts",
+          "name": "Scripts"
+        },
+        {
+          "id": "melos-lifecycle",
+          "name": "Lifecycle"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "melos.refresh",
+        "title": "Refresh",
+        "icon": {
+          "light": "resources/light/refresh.svg",
+          "dark": "resources/dark/refresh.svg"
+        }
+      },
+      {
+        "command": "melos.runScript",
+        "title": "Run Melos Script"
+      },
+      {
+        "command": "melos.bootstrap",
+        "title": "Bootstrap"
+      },
+      {
+        "command": "melos.clean",
+        "title": "Clean"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "melos.refresh",
+          "group": "navigation",
+          "when": "view == melos-scripts"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "18.x",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "glob": "^10.3.10",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "@types/js-yaml": "^4.0.9"
+  }
+}
