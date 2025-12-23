@@ -3,13 +3,14 @@ name: CD
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
+    outputs:
+      version: ${{ steps.version_step.outputs.version }}
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,11 +26,17 @@ jobs:
         run: npm ci
 
       - name: Update Version from Tag
+        id: version_step
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            # For workflow_dispatch or other events, verify if we can extract version or fallback
+            VERSION=$(node -p "require('./package.json').version")
+          fi
           echo "Updating version to $VERSION"
           npm version $VERSION --no-git-tag-version
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Compile
         run: npm run compile
@@ -37,10 +44,63 @@ jobs:
       - name: Package Extension
         run: npx @vscode/vsce package --no-dependencies
 
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-package
+          path: "*.vsix"
+          retention-days: 1
+
+  deploy-vscode:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vsix-package
+
       - name: Publish to VS Code Marketplace
-        run: npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }} --packagePath melos-sidebar-${{ env.VERSION }}.vsix
-        continue-on-error: true
+        run: |
+          # Find the .vsix file
+          VSIX_FILE=$(ls *.vsix | head -n 1)
+          echo "Publishing $VSIX_FILE"
+          npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }} --packagePath "$VSIX_FILE"
+
+  deploy-openvsx:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vsix-package
 
       - name: Publish to Open VSX
-        run: npx ovsx publish -p ${{ secrets.OVSX_PAT }} --packagePath melos-sidebar-${{ env.VERSION }}.vsix
-        continue-on-error: true
+        run: |
+          # Find the .vsix file
+          VSIX_FILE=$(ls *.vsix | head -n 1)
+          echo "Publishing $VSIX_FILE"
+          npx ovsx publish -p ${{ secrets.OVSX_PAT }} --packagePath "$VSIX_FILE"
