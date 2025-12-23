@@ -34,6 +34,46 @@ export function activate(context: vscode.ExtensionContext) {
         runCommand('melos init');
     });
 
+    vscode.commands.registerCommand('melos.openConfig', () => {
+        if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+            return;
+        }
+        const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        const melosYamlPath = path.join(rootPath, 'melos.yaml');
+        if (fs.existsSync(melosYamlPath)) {
+            vscode.workspace.openTextDocument(melosYamlPath).then(doc => {
+                vscode.window.showTextDocument(doc);
+            });
+        } else {
+            vscode.window.showErrorMessage('melos.yaml not found');
+        }
+    });
+
+    vscode.commands.registerCommand('melos.editScript', (node: ScriptItem) => {
+        if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+            return;
+        }
+        const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        const melosYamlPath = path.join(rootPath, 'melos.yaml');
+        if (fs.existsSync(melosYamlPath)) {
+            vscode.workspace.openTextDocument(melosYamlPath).then(doc => {
+                vscode.window.showTextDocument(doc).then(editor => {
+                    const text = doc.getText();
+                    const lines = text.split('\n');
+                    const scriptPattern = new RegExp(`^\\s*${node.label}:(?:\\s|$)`);
+                    for (let i = 0; i < lines.length; i++) {
+                        if (scriptPattern.test(lines[i])) {
+                            const position = new vscode.Position(i, 0);
+                            editor.selection = new vscode.Selection(position, position);
+                            editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+                            break;
+                        }
+                    }
+                });
+            });
+        }
+    });
+
     vscode.commands.registerCommand('melos.addScript', async (node: ScriptItem) => {
         if (!vscode.workspace.workspaceFolders) {
             return;
