@@ -3,39 +3,52 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MelosTreeDataProvider, MelosLifecycleDataProvider, ScriptItem, RECOMMENDED_SCRIPTS } from './melosTreeDataProvider';
 
-export function activate(context: vscode.ExtensionContext) {
-    const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
-        ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+// File System Watcher
+let melosWatcher: vscode.FileSystemWatcher | undefined;
+// Output Channel
+let outputChannel: vscode.OutputChannel;
 
-    const melosScriptProvider = new MelosTreeDataProvider(rootPath);
+export function activate(context: vscode.ExtensionContext) {
+    outputChannel = vscode.window.createOutputChannel('Melos Sidebar');
+    outputChannel.appendLine('Melos extension activating...');
+
+    const melosScriptProvider = new MelosTreeDataProvider();
     const melosLifecycleProvider = new MelosLifecycleDataProvider();
 
     vscode.window.registerTreeDataProvider('melos-scripts', melosScriptProvider);
     vscode.window.registerTreeDataProvider('melos-lifecycle', melosLifecycleProvider);
 
-    // Initial context check
-    updateContext(rootPath);
+    // Initial check and watcher setup
+    refreshWorkspace(melosScriptProvider);
 
-    vscode.commands.registerCommand('melos.refresh', () => melosScriptProvider.refresh());
+    // Watch for workspace folder changes
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+        refreshWorkspace(melosScriptProvider);
+    });
 
-    vscode.commands.registerCommand('melos.runScript', (node: ScriptItem) => {
+    vscode.commands.registerCommand('melos-sidebar.refresh', () => melosScriptProvider.refresh());
+
+    vscode.commands.registerCommand('melos-sidebar.runScript', (node: ScriptItem) => {
         runCommand(`melos run ${node.label}`);
     });
 
-    vscode.commands.registerCommand('melos.bootstrap', () => {
+    vscode.commands.registerCommand('melos-sidebar.bootstrap', () => {
         runCommand('melos bootstrap');
     });
 
-    vscode.commands.registerCommand('melos.clean', () => {
+    vscode.commands.registerCommand('melos-sidebar.clean', () => {
         runCommand('melos clean');
     });
 
-    vscode.commands.registerCommand('melos.init', () => {
+    vscode.commands.registerCommand('melos-sidebar.init', () => {
+        outputChannel.appendLine('Command: melos-sidebar.init');
         runCommand('melos init');
     });
 
-    vscode.commands.registerCommand('melos.openConfig', () => {
+    vscode.commands.registerCommand('melos-sidebar.openConfig', () => {
+        outputChannel.appendLine('Command: melos-sidebar.openConfig');
         if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+            outputChannel.appendLine('Error: No workspace folders found for openConfig');
             return;
         }
         const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
@@ -49,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    vscode.commands.registerCommand('melos.editScript', (node: ScriptItem) => {
+    vscode.commands.registerCommand('melos-sidebar.editScript', (node: ScriptItem) => {
         if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
             return;
         }
@@ -74,7 +87,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    vscode.commands.registerCommand('melos.addScript', async (node: ScriptItem) => {
+    vscode.commands.registerCommand('melos-sidebar.addScript', async (node: ScriptItem) => {
         if (!vscode.workspace.workspaceFolders) {
             return;
         }
@@ -153,22 +166,48 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-        const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(vscode.workspace.workspaceFolders[0], 'melos.yaml')
+}
+
+function refreshWorkspace(provider: MelosTreeDataProvider) {
+    outputChannel.appendLine('Refreshing workspace...');
+    const workspaceFolder = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
+        ? vscode.workspace.workspaceFolders[0] : undefined;
+    const rootPath = workspaceFolder ? workspaceFolder.uri.fsPath : undefined;
+
+    if (rootPath) {
+        outputChannel.appendLine(`Root path detected: ${rootPath}`);
+    } else {
+        outputChannel.appendLine('No root path detected.');
+    }
+
+    updateContext(rootPath);
+    provider.refresh();
+
+    // Dispose existing watcher if any
+    if (melosWatcher) {
+        melosWatcher.dispose();
+        melosWatcher = undefined;
+    }
+
+    if (workspaceFolder) { // Use workspaceFolder object for RelativePattern
+        outputChannel.appendLine('Creating file watcher for melos.yaml');
+        melosWatcher = vscode.workspace.createFileSystemWatcher(
+            new vscode.RelativePattern(workspaceFolder, 'melos.yaml')
         );
-        watcher.onDidCreate(() => {
+        melosWatcher.onDidCreate(() => {
+            outputChannel.appendLine('melos.yaml created');
             updateContext(rootPath);
-            melosScriptProvider.refresh();
+            provider.refresh();
         });
-        watcher.onDidChange(() => {
-            melosScriptProvider.refresh();
+        melosWatcher.onDidChange(() => {
+            outputChannel.appendLine('melos.yaml changed');
+            provider.refresh();
         });
-        watcher.onDidDelete(() => {
+        melosWatcher.onDidDelete(() => {
+            outputChannel.appendLine('melos.yaml deleted');
             updateContext(rootPath);
-            melosScriptProvider.refresh();
+            provider.refresh();
         });
-        context.subscriptions.push(watcher);
     }
 }
 
@@ -176,13 +215,16 @@ function updateContext(rootPath: string | undefined) {
     if (rootPath) {
         const melosYamlPath = path.join(rootPath, 'melos.yaml');
         const exists = fs.existsSync(melosYamlPath);
+        outputChannel.appendLine(`Updating context: melos:configExists=${exists}`);
         vscode.commands.executeCommand('setContext', 'melos:configExists', exists);
     } else {
+        outputChannel.appendLine('Updating context: melos:configExists=false');
         vscode.commands.executeCommand('setContext', 'melos:configExists', false);
     }
 }
 
 function runCommand(command: string) {
+    outputChannel.appendLine(`Running command: ${command}`);
     const terminal = vscode.window.activeTerminal || vscode.window.createTerminal('Melos');
     terminal.show();
     if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {

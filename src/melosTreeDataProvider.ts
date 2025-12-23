@@ -7,7 +7,7 @@ export class MelosTreeDataProvider implements vscode.TreeDataProvider<ScriptItem
     private _onDidChangeTreeData: vscode.EventEmitter<ScriptItem | vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<ScriptItem | vscode.TreeItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<ScriptItem | vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    constructor(private workspaceRoot: string | undefined) { }
+    constructor() { }
 
     refresh(): void {
         this._onDidChangeTreeData.fire();
@@ -18,14 +18,17 @@ export class MelosTreeDataProvider implements vscode.TreeDataProvider<ScriptItem
     }
 
     async getChildren(element?: ScriptItem | vscode.TreeItem): Promise<(ScriptItem | vscode.TreeItem)[]> {
-        if (!this.workspaceRoot) {
+        const workspaceRoot = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
+            ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+
+        if (!workspaceRoot) {
             return [];
         }
 
         if (element) {
             // If it's the Recommendation Group, return the recommended items
             if (element instanceof vscode.TreeItem && element.label === 'Recommendations') {
-                const parser = new MelosParser(this.workspaceRoot);
+                const parser = new MelosParser(workspaceRoot);
                 const scripts = await parser.parse();
                 const existingScriptNames = new Set(scripts.map(s => s.name));
 
@@ -39,7 +42,7 @@ export class MelosTreeDataProvider implements vscode.TreeDataProvider<ScriptItem
                             vscode.TreeItemCollapsibleState.None
                         );
                         item.command = {
-                            command: 'melos.addScript',
+                            command: 'melos-sidebar.addScript',
                             title: 'Add Script',
                             arguments: [item]
                         };
@@ -51,14 +54,14 @@ export class MelosTreeDataProvider implements vscode.TreeDataProvider<ScriptItem
             return [];
         }
 
-        const melosYamlPath = path.join(this.workspaceRoot, 'melos.yaml');
+        const melosYamlPath = path.join(workspaceRoot, 'melos.yaml');
         if (!fs.existsSync(melosYamlPath)) {
             // Return empty array to trigger viewsWelcome
             return [];
         }
 
         // Top level: scripts
-        const parser = new MelosParser(this.workspaceRoot);
+        const parser = new MelosParser(workspaceRoot);
         const scripts = await parser.parse();
 
         // Sort scripts alphabetically
@@ -143,7 +146,7 @@ export class ScriptItem extends vscode.TreeItem {
         this.description = this.descriptionString;
         this.contextValue = 'script';
         this.command = {
-            command: 'melos.runScript',
+            command: 'melos-sidebar.runScript',
             title: 'Run Script',
             arguments: [this]
         };
@@ -163,11 +166,11 @@ export class MelosLifecycleDataProvider implements vscode.TreeDataProvider<vscod
         }
 
         const bootstrap = new vscode.TreeItem('Bootstrap', vscode.TreeItemCollapsibleState.None);
-        bootstrap.command = { command: 'melos.bootstrap', title: 'Bootstrap' };
+        bootstrap.command = { command: 'melos-sidebar.bootstrap', title: 'Bootstrap' };
         bootstrap.iconPath = new vscode.ThemeIcon('sync');
 
         const clean = new vscode.TreeItem('Clean', vscode.TreeItemCollapsibleState.None);
-        clean.command = { command: 'melos.clean', title: 'Clean' };
+        clean.command = { command: 'melos-sidebar.clean', title: 'Clean' };
         clean.iconPath = new vscode.ThemeIcon('trash');
 
         return Promise.resolve([bootstrap, clean]);
