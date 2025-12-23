@@ -113,6 +113,21 @@ export const RECOMMENDED_SCRIPTS = [
         name: 'test:select',
         run: 'melos exec --dir-exists=\"test\" --fail-fast -- flutter test',
         description: 'Run flutter test for selected package'
+    },
+    {
+        name: 'codegen',
+        run: 'melos exec -c 1 --depends-on=\"build_runner\" -- flutter pub run build_runner build --delete-conflicting-outputs',
+        description: 'Run build_runner in packages that depend on it'
+    },
+    {
+        name: 'fix',
+        run: 'melos exec -- dart fix --apply',
+        description: 'Apply automatic fixes to all packages'
+    },
+    {
+        name: 'upgrade',
+        run: 'melos exec -- flutter pub upgrade',
+        description: 'Upgrade dependencies in all packages'
     }
 ];
 
