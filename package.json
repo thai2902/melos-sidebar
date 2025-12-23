@@ -24,7 +24,7 @@
     "viewsWelcome": [
       {
         "view": "melos-scripts",
-        "contents": "No Melos workspace detected.\n[Initialize Melos Workspace](command:melos.init)",
+        "contents": "No Melos workspace detected.\n[Initialize Melos Workspace](command:melos-sidebar.init)",
         "when": "!melos:configExists"
       }
     ],
@@ -51,41 +51,38 @@
     },
     "commands": [
       {
-        "command": "melos.refresh",
+        "command": "melos-sidebar.refresh",
         "title": "Refresh",
-        "icon": {
-          "light": "resources/light/refresh.svg",
-          "dark": "resources/dark/refresh.svg"
-        }
+        "icon": "$(refresh)"
       },
       {
-        "command": "melos.runScript",
+        "command": "melos-sidebar.runScript",
         "title": "Run Melos Script"
       },
       {
-        "command": "melos.bootstrap",
+        "command": "melos-sidebar.bootstrap",
         "title": "Bootstrap"
       },
       {
-        "command": "melos.clean",
+        "command": "melos-sidebar.clean",
         "title": "Clean"
       },
       {
-        "command": "melos.init",
+        "command": "melos-sidebar.init",
         "title": "Initialize Melos Workspace"
       },
       {
-        "command": "melos.addScript",
+        "command": "melos-sidebar.addScript",
         "title": "Add Script",
         "icon": "$(plus)"
       },
       {
-        "command": "melos.openConfig",
+        "command": "melos-sidebar.openConfig",
         "title": "Open melos.yaml",
         "icon": "$(go-to-file)"
       },
       {
-        "command": "melos.editScript",
+        "command": "melos-sidebar.editScript",
         "title": "Edit Script",
         "icon": "$(edit)"
       }
@@ -93,17 +90,17 @@
     "menus": {
       "view/title": [
         {
-          "command": "melos.refresh",
+          "command": "melos-sidebar.refresh",
           "group": "navigation",
           "when": "view == melos-scripts"
         },
         {
-          "command": "melos.bootstrap",
+          "command": "melos-sidebar.bootstrap",
           "group": "navigation",
           "when": "view == melos-scripts"
         },
         {
-          "command": "melos.openConfig",
+          "command": "melos-sidebar.openConfig",
           "group": "navigation",
           "when": "view == melos-scripts",
           "order": 10
@@ -111,12 +108,12 @@
       ],
       "view/item/context": [
         {
-          "command": "melos.addScript",
+          "command": "melos-sidebar.addScript",
           "group": "inline",
           "when": "view == melos-scripts && viewItem == recommendation"
         },
         {
-          "command": "melos.editScript",
+          "command": "melos-sidebar.editScript",
           "group": "inline",
           "when": "view == melos-scripts && viewItem == script"
         }
@@ -138,10 +135,10 @@
     "@typescript-eslint/parser": "^6.15.0",
     "eslint": "^8.56.0",
     "glob": "^10.3.10",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@types/js-yaml": "^4.0.9"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0",
-    "@types/js-yaml": "^4.0.9"
+    "js-yaml": "^4.1.0"
   }
 }
