@@ -16,10 +16,18 @@
     "Other"
   ],
   "activationEvents": [
-    "workspaceContains:melos.yaml"
+    "workspaceContains:melos.yaml",
+    "onView:melos-sidebar"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsWelcome": [
+      {
+        "view": "melos-scripts",
+        "contents": "No Melos workspace detected.\n[Initialize Melos Workspace](command:melos.init)",
+        "when": "!melos:configExists"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -61,6 +69,25 @@
       {
         "command": "melos.clean",
         "title": "Clean"
+      },
+      {
+        "command": "melos.init",
+        "title": "Initialize Melos Workspace"
+      },
+      {
+        "command": "melos.addScript",
+        "title": "Add Script",
+        "icon": "$(plus)"
+      },
+      {
+        "command": "melos.openConfig",
+        "title": "Open melos.yaml",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "melos.editScript",
+        "title": "Edit Script",
+        "icon": "$(edit)"
       }
     ],
     "menus": {
@@ -69,6 +96,29 @@
           "command": "melos.refresh",
           "group": "navigation",
           "when": "view == melos-scripts"
+        },
+        {
+          "command": "melos.bootstrap",
+          "group": "navigation",
+          "when": "view == melos-scripts"
+        },
+        {
+          "command": "melos.openConfig",
+          "group": "navigation",
+          "when": "view == melos-scripts",
+          "order": 10
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "melos.addScript",
+          "group": "inline",
+          "when": "view == melos-scripts && viewItem == recommendation"
+        },
+        {
+          "command": "melos.editScript",
+          "group": "inline",
+          "when": "view == melos-scripts && viewItem == script"
         }
       ]
     }
