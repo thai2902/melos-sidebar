@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 import { MelosParser, MelosScript } from './melosParser';
 
 export class MelosTreeDataProvider implements vscode.TreeDataProvider<ScriptItem | vscode.TreeItem> {
@@ -16,12 +17,43 @@ export class MelosTreeDataProvider implements vscode.TreeDataProvider<ScriptItem
         return element;
     }
 
-    async getChildren(element?: ScriptItem): Promise<(ScriptItem | vscode.TreeItem)[]> {
+    async getChildren(element?: ScriptItem | vscode.TreeItem): Promise<(ScriptItem | vscode.TreeItem)[]> {
         if (!this.workspaceRoot) {
             return [];
         }
 
         if (element) {
+            // If it's the Recommendation Group, return the recommended items
+            if (element instanceof vscode.TreeItem && element.label === 'Recommendations') {
+                const parser = new MelosParser(this.workspaceRoot);
+                const scripts = await parser.parse();
+                const existingScriptNames = new Set(scripts.map(s => s.name));
+
+                return RECOMMENDED_SCRIPTS
+                    .filter(rec => !existingScriptNames.has(rec.name))
+                    .map(rec => {
+                        const item = new ScriptItem(
+                            rec.name,
+                            rec.run,
+                            rec.description,
+                            vscode.TreeItemCollapsibleState.None
+                        );
+                        item.command = {
+                            command: 'melos.addScript',
+                            title: 'Add Script',
+                            arguments: [item]
+                        };
+                        item.contextValue = 'recommendation';
+                        item.iconPath = new vscode.ThemeIcon('lightbulb');
+                        return item;
+                    });
+            }
+            return [];
+        }
+
+        const melosYamlPath = path.join(this.workspaceRoot, 'melos.yaml');
+        if (!fs.existsSync(melosYamlPath)) {
+            // Return empty array to trigger viewsWelcome
             return [];
         }
 
@@ -32,14 +64,57 @@ export class MelosTreeDataProvider implements vscode.TreeDataProvider<ScriptItem
         // Sort scripts alphabetically
         scripts.sort((a, b) => a.name.localeCompare(b.name));
 
-        return scripts.map(script => new ScriptItem(
+        const scriptItems: (ScriptItem | vscode.TreeItem)[] = scripts.map(script => new ScriptItem(
             script.name,
             script.run,
             script.description,
             vscode.TreeItemCollapsibleState.None
         ));
+
+        // Check for missing recommendations
+        const existingScriptNames = new Set(scripts.map(s => s.name));
+        const missingRecommendations = RECOMMENDED_SCRIPTS.filter(rec => !existingScriptNames.has(rec.name));
+
+        if (missingRecommendations.length > 0) {
+            const recommendationGroup = new vscode.TreeItem('Recommendations', vscode.TreeItemCollapsibleState.Collapsed);
+            recommendationGroup.iconPath = new vscode.ThemeIcon('star');
+            recommendationGroup.contextValue = 'recommendationGroup';
+            scriptItems.push(recommendationGroup);
+        }
+
+        return scriptItems;
     }
 }
+
+export const RECOMMENDED_SCRIPTS = [
+    {
+        name: 'lint',
+        run: 'melos run analyze',
+        description: 'Run dart analyze in all packages',
+        dependencies: ['analyze']
+    },
+    {
+        name: 'analyze',
+        run: 'melos exec -- dart analyze .',
+        description: 'Run dart analyze in all packages'
+    },
+    {
+        name: 'format',
+        run: 'dart format .',
+        description: 'Format all code'
+    },
+    {
+        name: 'test',
+        run: 'melos run test:select',
+        description: 'Run tests interactively',
+        dependencies: ['test:select']
+    },
+    {
+        name: 'test:select',
+        run: 'melos exec --dir-exists=\"test\" --fail-fast -- flutter test',
+        description: 'Run flutter test for selected package'
+    }
+];
 
 export class ScriptItem extends vscode.TreeItem {
     constructor(
